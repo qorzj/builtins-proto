@@ -1,6 +1,36 @@
 "use strict";
 
-// methods of list
+
+Array.prototype.count = function(x) {
+    var n = 0;
+    this.forEach(item => {
+        if (item === x) {
+            n += 1;
+        }
+    });
+    return n;
+}
+
+Array.prototype.__len__ = function() {
+    return this.length;
+}
+
+Array.prototype.__eq__ = function(arr) {
+    // only for list which depth=1
+    if (!(arr instanceof Array)) {
+        return false;
+    }
+    if (this.length !== arr.length) {
+        return false;
+    }
+    for (let i=0;i<arr.length;i++) {
+        if (this[i] !== arr[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Array.prototype.__lt__ = function(arr) {
     // only for list which depth=1
     if (!(arr instanceof Array)) {
@@ -39,4 +69,5 @@ function type(x) {
   return Object.prototype.toString.call(x);
 }
 
-module.exports = null;
+
+// module.exports = null;
