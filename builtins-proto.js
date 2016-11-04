@@ -109,40 +109,68 @@ Array.prototype.pop = function(idx) {
 
 // Array.prototype.sort is [native code]
 
-Array.prototype.sortByKey = function(keyFunc, reverse) {
+Array.prototype.sortbykey = function(key, reverse) {
     var v = reverse ? -1 : 1;
-    if (keyFunc == null) {
-        keyFunc = (x => x);
+    if (key == null) {
+        key = (x => x);
     }
-    var cmpFunc = (a, b) => (
+    var cmpfunc = (a, b) => (
         (ka, kb) => (__lt__(ka, kb) ? -v : (__eq__(ka, kb) ? 0 : v))
-    )(keyFunc(a), keyFunc(b));
-    this.sort(cmpFunc);
+    )(key(a), key(b));
+    this.sort(cmpfunc);
     return this;
 }
 
+// bound methods of dict
+/*
+Object.prototype.__eq__ = function(obj) {
+    var keysA = Object.entries(this).sort();
+    var keysB = Object.entries(obj).sort();
+    return keysA.__eq__(keysB);
+}
+
+Object.prototype.__len__ = function() {
+    return Object.keys(this).length;
+}
+*/
+
 // unbound methods of dict
-var dict = {
-    __init__: function(lst) {
-        var ret = {};
-        for (let [k, v] of lst) {
-            ret[k] = v;
-        }
-        return ret;
-    },
+function dict(lst) {
+    var ret = {};
+    for (let [k, v] of lst) {
+        ret[k] = v;
+    }
+    return ret;
+}
+
+Object.assign(dict, {
     __eq__: function(a, b) {
+        if (!isobject(a) || !isobject(b)) {
+            return false;
+        }
         var keysA = Object.entries(a).sort();
         var keysB = Object.entries(b).sort();
         return keysA.__eq__(keysB);
     },
+    __len__: function(obj) {
+        if (isobject(obj)) {
+            return Object.keys(obj).length;
+        }
+    },
     keys: function(obj) {
-        return Object.keys(obj);
+        if (isobject(obj)) {
+            return Object.keys(obj);
+        }
     },
     values: function(obj) {
-        return Object.values(obj);
+        if (isobject(obj)) {
+            return Object.values(obj);
+        }
     },
     items: function(obj) {
-        return Object.entries(obj);
+        if (isobject(obj)) {
+            return Object.entries(obj);
+        }
     },
     has_key: function(obj, key) {
         return obj[key] === undefined;
@@ -156,18 +184,19 @@ var dict = {
         return ret;
     },
     update: function() {
-        Object.assign.apply(null, arguments);
+        return Object.assign.apply(null, arguments);
     },
     clear: function(obj) {
         var keys = Object.keys(obj);
         for (var k of keys) {
             delete obj[k];
         }
+        return obj;
     },
     copy: function(obj) {
         return Object.assign({}, obj);
     },
-}
+});
 
 // unbound methods of json
 var json = {
@@ -177,10 +206,16 @@ var json = {
     dumps: function(obj) {
         return JSON.stringify(obj);
     },
+    log: function(obj) {
+        console.log(JSON.stringify(obj));
+    }
 }
 
 //__builtins__ functions
 function __eq__(x, y) {
+    if (isobject(x)) {
+        return dict.__eq__(x, y);
+    }
     return (x != null && x.__eq__) ? x.__eq__(y) : x === y;
 }
 
@@ -192,6 +227,35 @@ function __gt__(x, y) {
     return (x != null && x.__gt__) ? x.__gt__(y) : x > y;
 }
 
+function len(x) {
+    if (isobject(x)) {
+        return dict.__len__(x);
+    }
+    if (x != null && x.__len__) {
+        return x.__len__();
+    }
+    if (x != null && x.length != null) {
+        return x.length;
+    }
+}
+
+function abs(x) {
+    return Math.abs(x);
+}
+
+function bool(x) {
+    var L = len(x);
+    return L === undefined ? Boolean(x) : (L != 0);
+}
+
+function int(x) {
+    return parseInt(x);
+}
+
+function float(x) {
+    return parseFloat(x);
+}
+
 function type(x) {
     //return x.constructor;
     return Object.prototype.toString.call(x);
@@ -199,6 +263,64 @@ function type(x) {
 
 function print(x) {
     console.log(x);
+}
+
+function isobject(x) {
+    return type(x) === '[object Object]';
+}
+
+function *enumerate(iterable, start) {
+    if (start == null) {
+        start = 0;
+    }
+    if (isobject(iterable)) {
+        iterable = dict.keys(iterable);
+    }
+    var cc = 0;
+    for (let x of iterable) {
+        if (cc >= start) {
+            yield [cc, x];
+        }
+        cc += 1;
+    }
+}  
+
+function list(iterable) {
+    if (iterable == null) {
+        return [];
+    }
+    var ret = [];
+    for (let [i, x] of enumerate(iterable)) {
+        ret.push(x);
+    }
+    return ret;
+}
+
+function *map(func, iterable) {
+    if (func == null) {
+        func = (x=>x);
+    }
+    for (let x of iterable) {
+        yield func(x);
+    }
+}
+
+function *filter(func, iterable) {
+    if (func == null) {
+        func = (x=>true);
+    }
+    for (let x of iterable) {
+        if (bool(func(x))) {
+            yield func(x);
+        }
+    }
+}
+
+function *reduce(func, iterable, initial) {
+    for (let x of iterable) {
+        initial = (initial === undefined ? x : func(initial, x));
+    }
+    return initial;
 }
 
 // module.exports = null;
