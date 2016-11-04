@@ -16,7 +16,7 @@ size: 3
 ```
 
 ### 目标
-* 实现python的```__builtins__```和web.py的Utils
+* 实现python的```__builtins__```
 * 不考虑语法层面的运算符重载
 * 结束python和javascript到底哪家强的论战
 
