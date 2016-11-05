@@ -108,31 +108,36 @@ Array.prototype.pop = function(idx) {
 // Array.prototype.reverse is [native code]
 
 // Array.prototype.sort is [native code]
-
-Array.prototype.sortbykey = function(key, reverse) {
-    var v = reverse ? -1 : 1;
-    if (key == null) {
-        key = (x => x);
+Array.prototype.__sort__ = Array.prototype.__sort__ || Array.prototype.sort;
+Array.prototype.sort = function(argobj) {
+    if (type(argobj) === type.dict) {
+        var v = argobj.reverse ? -1 : 1;
+        var cmpfunc = (a, b)=>(__lt__(a, b) ? -v : (__eq__(a, b) ? 0 : v));
+        if (argobj.cmp != null) {
+            let cmp = argobj.cmp;
+            cmpfunc = (a, b) => (cmp(a, b) * v);
+        } else if (argobj.key != null) {
+            let key = argobj.key;
+            cmpfunc = (a, b) => ((
+                (ka, kb) => (__lt__(ka, kb) ? -v : (__eq__(ka, kb) ? 0 : v))
+            )(key(a), key(b)));
+        }
+        return this.__sort__(cmpfunc);
     }
-    var cmpfunc = (a, b) => (
-        (ka, kb) => (__lt__(ka, kb) ? -v : (__eq__(ka, kb) ? 0 : v))
-    )(key(a), key(b));
-    this.sort(cmpfunc);
-    return this;
+    return this.__sort__(argobj);
 }
 
-// bound methods of dict
-/*
-Object.prototype.__eq__ = function(obj) {
-    var keysA = Object.entries(this).sort();
-    var keysB = Object.entries(obj).sort();
-    return keysA.__eq__(keysB);
+// override list[] (get & set)
+Array.prototype.val = function(idx, value) {
+    if (idx < 0) {
+        idx = this.length + idx;
+    }
+    if (value === undefined) {
+        return this[idx];
+    }
+    this[idx] = value;
+    return value;
 }
-
-Object.prototype.__len__ = function() {
-    return Object.keys(this).length;
-}
-*/
 
 // unbound methods of dict
 function dict(lst) {
@@ -145,7 +150,7 @@ function dict(lst) {
 
 Object.assign(dict, {
     __eq__: function(a, b) {
-        if (!isobject(a) || !isobject(b)) {
+        if (type(a) !== type.dict || type(b) !== type.dict) {
             return false;
         }
         var keysA = Object.entries(a).sort();
@@ -153,22 +158,22 @@ Object.assign(dict, {
         return keysA.__eq__(keysB);
     },
     __len__: function(obj) {
-        if (isobject(obj)) {
+        if (type(obj) === type.dict) {
             return Object.keys(obj).length;
         }
     },
     keys: function(obj) {
-        if (isobject(obj)) {
+        if (type(obj) === type.dict) {
             return Object.keys(obj);
         }
     },
     values: function(obj) {
-        if (isobject(obj)) {
+        if (type(obj) === type.dict) {
             return Object.values(obj);
         }
     },
     items: function(obj) {
-        if (isobject(obj)) {
+        if (type(obj) === type.dict) {
             return Object.entries(obj);
         }
     },
@@ -198,7 +203,7 @@ Object.assign(dict, {
     },
 });
 
-// unbound methods of json
+// bound methods of json
 var json = {
     loads: function(jsonText) {
         return JSON.parse(jsonText);
@@ -211,12 +216,38 @@ var json = {
     }
 }
 
+// bound methods of str
+String.prototype.join = function(iterable) {
+    return list(iterable).join(this);
+}
+
+// String.prototype.format is https://raw.githubusercontent.com/xfix/python-format/master/lib/python-format.js
+
+String.prototype.strip = function(iterable) {
+    return this.trim();
+}
+
 //__builtins__ functions
 function __eq__(x, y) {
-    if (isobject(x)) {
+    if (type(x) === type.dict) {
         return dict.__eq__(x, y);
     }
     return (x != null && x.__eq__) ? x.__eq__(y) : x === y;
+}
+
+function __in__(x, seg) {
+    if (type(seg) === type.str) {
+        return seg.indexOf(x) !== -1;
+    }
+    if (type(seg) === type.dict) {
+        return seg[x] !== undefined;
+    }
+    for (let item of seg) {
+        if (__eq__(x, item)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function __lt__(x, y) {
@@ -227,8 +258,41 @@ function __gt__(x, y) {
     return (x != null && x.__gt__) ? x.__gt__(y) : x > y;
 }
 
+function __slice__(seg, start, end, step) {
+    var L = len(seg);
+    if (start == null) {
+        start = 0;
+    } else if (start < 0) {
+        start = L + start;
+    }
+    if (end == null) {
+        end = L;
+    } else if (end < 0) {
+        end = L + end;
+    }
+    if (step == null) {
+        step = 1;
+    } else if (step == 0) {
+        return;
+    }
+    var lst = [];
+    if (step > 0) {
+        for (let i = start; i < end; i += step) {
+            lst.push(seg[i]);
+        }
+    } else if (step < 0) {
+        for (let i = end - 1; i >= start; i += step) {
+            lst.push(seg[i]);
+        }
+    }
+    if (type(seg) === type.str) {
+        return lst.join('');
+    }
+    return lst;
+}
+
 function len(x) {
-    if (isobject(x)) {
+    if (type(x) === type.dict) {
         return dict.__len__(x);
     }
     if (x != null && x.__len__) {
@@ -260,20 +324,30 @@ function type(x) {
     //return x.constructor;
     return Object.prototype.toString.call(x);
 }
+Object.assign(type, {
+    list: "[object Array]",
+    dict: "[object Object]",
+    number: "[object Number]",
+    str: "[object String]",
+});
+
+function chr(x) {
+    return String.fromCharCode(x);
+}
+
+function ord(x) {
+    return x.charCodeAt(0);
+}
 
 function print(x) {
     console.log(x);
-}
-
-function isobject(x) {
-    return type(x) === '[object Object]';
 }
 
 function *enumerate(iterable, start) {
     if (start == null) {
         start = 0;
     }
-    if (isobject(iterable)) {
+    if (type(iterable) === type.dict) {
         iterable = dict.keys(iterable);
     }
     var cc = 0;
@@ -283,7 +357,7 @@ function *enumerate(iterable, start) {
         }
         cc += 1;
     }
-}  
+}
 
 function list(iterable) {
     if (iterable == null) {
@@ -296,31 +370,92 @@ function list(iterable) {
     return ret;
 }
 
-function *map(func, iterable) {
+function map(func, iterable) {
     if (func == null) {
         func = (x=>x);
     }
+    var ret = [];
     for (let x of iterable) {
-        yield func(x);
+        ret.push(func(x));
     }
+    return ret;
 }
 
-function *filter(func, iterable) {
+function filter(func, iterable) {
     if (func == null) {
         func = (x=>true);
     }
+    var ret = [];
     for (let x of iterable) {
         if (bool(func(x))) {
-            yield func(x);
+            ret.push(func(x));
         }
     }
+    return ret;
 }
 
-function *reduce(func, iterable, initial) {
+function reduce(func, iterable, initial) {
     for (let x of iterable) {
         initial = (initial === undefined ? x : func(initial, x));
     }
     return initial;
 }
 
-// module.exports = null;
+function min() {
+    var args = list(arguments);
+    if (args.length === 1) {
+        return reduce((x, y)=>(__lt__(x, y) ? x : y), args[0]);
+    }
+    return min(args);
+}
+
+function max() {
+    var args = list(arguments);
+    if (args.length === 1) {
+        return reduce((x, y)=>(__lt__(x, y) ? y : x), args[0]);
+    }
+    return min(args);
+}
+
+function sum() {
+    var args = list(arguments);
+    if (args.length === 1) {
+        return reduce((x, y)=>(x + y), args[0]);
+    }
+    return min(args);
+}
+
+function range(start, end, step) {
+    if (start == null) {
+        start = 0;
+    }
+    if (end == null) {
+        [start, end] = [0, start];
+    }
+    if (step == null) {
+        step = 1;
+    }
+    var ret = [];
+    for (let i = start; i < end; i += step) {
+        ret.push(i);
+    }
+    return ret;
+}
+
+function zip() {
+    var args = map(x=>list(x), list(arguments));
+    var L = min(map(x=>len(x), args));
+    var ret = [];
+    for (let i = 0; i < L; i++) {
+        let tmp = [];
+        for (let j = 0; j < args.length; j++) {
+            tmp.push(args[j][i]);
+        }
+        ret.push(tmp);
+    }
+    return ret;
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = null;
+}
