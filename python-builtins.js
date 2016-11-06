@@ -1,5 +1,6 @@
 "use strict";
 
+// some code is copy from https://github.com/spockNinja/js-py-proto/tree/master/src/modules
 // bound methods of list
 Array.prototype.__len__ = function() {
     return this.length;
@@ -60,7 +61,7 @@ Array.prototype.append = function(x) {
 Array.prototype.count = function(x) {
     var n = 0;
     this.forEach(item => {
-        if (item === x) {
+        if (__eq__(item, x)) {
             n += 1;
         }
     });
@@ -85,24 +86,20 @@ Array.prototype.index = function(value, start, stop) {
     return -1;
 }
 
-Array.prototype.insert = function(idx, obj) {
-    this.push(undefined);
-    for (let i = this.length - 1; i > idx; i--) {
-        this[i] = this[i-1];
-    }
-    this[idx] = obj;
+Array.prototype.insert = function(idx, item) {
+    this.splice(idx, 0, item);
     return this;
 }
 
 Array.prototype.__pop__ = Array.prototype.__pop__ || Array.prototype.pop;
 Array.prototype.pop = function(idx) {
-    var p = (idx === undefined) ? this.length - 1 : idx;
-    var ret = this[p];
-    for (let i = p; i < this.length - 1; i++) {
-        this[i] = this[i + 1];
+    if (idx === undefined) {
+        return this.__pop__();
     }
-    this.__pop__();
-    return ret;
+    if (0 <= idx && idx < this.length) {
+        return this.splice(idx, 1)[0];
+    }
+
 }
 
 // Array.prototype.reverse is [native code]
@@ -217,17 +214,151 @@ var json = {
 }
 
 // bound methods of str
+String.prototype.count = function(sub, start, end) {
+    // count the number of non-overlapping instances of 'sub'
+    // between the optional 'start' and 'end' (0 based indices)
+    start = start || 0;
+    end = end || this.length;
+    var count = 0, idx = start, inc = 0;
+    // go until we don't find any more occurences in the slice
+    while ((inc = this.slice(idx, end).indexOf(sub)) !== -1) {
+        count++;
+        idx += (inc + sub.length);
+    }
+    return count;
+}
+
+String.prototype.find = function(sub, start, end) {
+    // finds the index of the first occurence of a substring
+    // within the slice from start to end
+    start = start || 0;
+    end = end || this.length;
+    var res = this.slice(start, end).indexOf(sub);
+    if (res !== -1) {
+        // tack on the start, but only if we found something
+        res += start;
+    }
+    return res;
+}
+
 String.prototype.join = function(iterable) {
     return list(iterable).join(this);
 }
 
+String.prototype.isalnum = function() {
+    return (/^[A-Za-z0-9]+$/).test(this);
+}
+
+String.prototype.isalpha = function() {
+    return (/^[A-Za-z]+$/).test(this);
+}
+
+String.prototype.isdigit = function() {
+    return (/^\d+$/).test(this);
+}
+
+String.prototype.isspace = function() {
+    return (/^\s+$/).test(this);
+}
+
+String.prototype.lower = function() {
+    return this.toLowerCase();
+}
+
+String.prototype.upper = function() {
+    return this.toUpperCase();
+}
+
+String.prototype.splitlines = function(keepends) {
+    // Returns a list of the lines, including line breaks if keepends is true
+    var retArray = [], newLineRegex = null;
+    // without keepnds, we can do the quick and easy split on newline chars
+    if (!keepends) {
+        newLineRegex = (/[\f\n\r]/);
+        retArray = this.split(newLineRegex);
+    }
+    else {
+        // use the capturing functionality of split to keep the newlines
+        // we just have to create a new array with every two items concatenated
+        newLineRegex = (/([\f\n\r])/);
+        var keptArray = this.split(newLineRegex);
+
+        for (var i=0; i<keptArray.length; i+=2) {
+            if ((i + 1) < keptArray.length) {
+                retArray.push(keptArray[i] + keptArray[i+1]);
+            }
+            else {
+                retArray.push(keptArray[i]);
+            }
+        }
+    }
+    // to act like python's version, we need to take off trailing empty strings
+    if (retArray.slice(-1)[0] === "") {
+        retArray.pop();
+    }
+    return retArray;
+}
 // String.prototype.format is https://raw.githubusercontent.com/xfix/python-format/master/lib/python-format.js
 
 String.prototype.strip = function(iterable) {
     return this.trim();
 }
 
-//__builtins__ functions
+// unbound methods of str
+function str(x) {
+    return JSON.stringify(x);
+}
+
+Object.assign(str, {
+    split: function(text, sep, maxsplit) {
+        if (sep == null) {
+            text = text.trim();
+            sep = /\s+/;
+        }
+        var segs = text.split(sep);
+        var L = segs.length;
+        if (maxsplit == null || maxsplit < 0 || maxsplit >= L - 1) {
+            return segs;
+        }
+        var left = __slice__(segs, 0, maxsplit);
+        var right = __slice__(segs, maxsplit);
+        // **there is a bug when sep is null and maxsplit is not null
+        left.push(right.join(sep));
+        return left;
+    },
+    rsplit: function(text, sep, maxsplit) {
+        if (maxsplit === 0) {
+            return [text];
+        }
+        if (sep == null) {
+            sep = /\s+/;
+        }
+        var segs = text.split(sep);
+        if (maxsplit == null || maxsplit < 0 || maxsplit >= segs.length - 1) {
+            return segs;
+        }
+        var right = __slice__(segs, -maxsplit);
+        var left = __slice__(segs, 0, -maxsplit);
+        right.insert(0, left.join(sep));
+        return right;
+    },
+    replace: function(text, older, newer, count) {
+        var p = 0;
+        var cc = 0;
+        while (count == null || count < 0 || cc < count) {
+            let i = text.find(older, p);
+            if (i === -1) {
+                break;
+            }
+            text = text.substr(0, i) + text.substr(i).replace(older, newer);
+            p = i + newer.length;
+            cc += 1;
+        }
+        return text;
+    },
+});
+
+// __builtins__ functions
 function __eq__(x, y) {
     if (type(x) === type.dict) {
         return dict.__eq__(x, y);
@@ -324,11 +455,18 @@ function type(x) {
     //return x.constructor;
     return Object.prototype.toString.call(x);
 }
+
 Object.assign(type, {
     list: "[object Array]",
     dict: "[object Object]",
     number: "[object Number]",
     str: "[object String]",
+    isnan: function(x) {
+        return type(x) === type.number && x !== x;
+    },
+    isint: function(x) {
+        return type(x) === type.number && int(x) === x;
+    }
 });
 
 function chr(x) {
