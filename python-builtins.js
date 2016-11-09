@@ -200,19 +200,6 @@ Object.assign(dict, {
     },
 });
 
-// bound methods of json
-var json = {
-    loads: function(jsonText) {
-        return JSON.parse(jsonText);
-    },
-    dumps: function(obj) {
-        return JSON.stringify(obj);
-    },
-    log: function(obj) {
-        console.log(JSON.stringify(obj));
-    }
-}
-
 // bound methods of str
 String.prototype.count = function(sub, start, end) {
     // count the number of non-overlapping instances of 'sub'
@@ -304,9 +291,60 @@ String.prototype.strip = function(iterable) {
     return this.trim();
 }
 
+String.prototype.wrap = function(x, a, b) {
+    if (type(a) === type.number) {
+        [a, b] = [b, a];
+    }
+    var attr = '';
+    if (a != null) {
+        attr = map(x=>` ${x[0]}="${str.replace(x[1], '"', '\\"')}"`, dict.items(a)).join('');
+    }
+    if (x == null) {
+        x = '';
+    }
+    if (b != null && type(x) === type.number) {
+        x = x.toFixed(b) ;
+    }
+    return this ? `<${this}${attr}>${x}</${this}>` : str(x);
+}
+
+// bound methods of json
+var json = {
+    loads: function(jsonText) {
+        return JSON.parse(jsonText);
+    },
+    dumps: function(obj) {
+        return JSON.stringify(obj);
+    },
+    log: function(obj) {
+        console.log(JSON.stringify(obj));
+    }
+}
+
+// bound methods of urllib
+var urllib = {
+    quote: function(text) {
+        return encodeURI(text);
+    },
+    unquote: function(text) {
+        return decodeURI(text);
+    },
+    param: function(search) {
+        search = search || location.search;
+        if (search[0] === '?') {
+            search = search.substr(1);
+        }
+        if (!search) {
+            return {};
+        }
+        var segs = map(x=>str.split(x, '=', 1), str.split(search, '&'));
+        return dict(map(x=>[urllib.unquote(x[0]), urllib.unquote(x[1])], segs));
+    },
+}
+
 // unbound methods of str
 function str(x) {
-    return JSON.stringify(x);
+    return '' + x;
 }
 
 Object.assign(str, {
