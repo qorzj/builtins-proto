@@ -308,6 +308,29 @@ String.prototype.wrap = function(x, a, b) {
     return this ? `<${this}${attr}>${x}</${this}>` : str(x);
 }
 
+String.prototype.wrapin = function(x, a) {
+    var attr = '';
+    if (!x) {
+        return this;
+    }
+    if (a != null) {
+        attr = map(x=>` ${x[0]}="${str.replace(x[1], '"', '\\"')}"`, dict.items(a)).join('');
+    }
+    return `<${x}${attr}>${this}</${x}>`;
+}
+
+// bound methods of Date
+Date.prototype.local = function(timezone) {
+    timezone = parseInt(timezone);
+    var tzoffset = this.getTimezoneOffset();
+    var timestamp = this.getTime() + tzoffset * 60000 + timezone * 3600000;
+    var dobj = new Date(timestamp);
+    var m = dobj.getMonth() + 1;
+    m = m < 10 ? '0' + m : '' + m;
+    var [d, y] = __slice__(dobj.toDateString().split(' '), -2);
+    return `${y}-${m}-${d} ${dobj.toTimeString().split(' ')[0]}`;
+}
+
 // bound methods of json
 var json = {
     loads: function(jsonText) {
