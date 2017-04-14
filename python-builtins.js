@@ -198,6 +198,12 @@ Object.assign(dict, {
     copy: function(obj) {
         return Object.assign({}, obj);
     },
+    setdefault: function(obj, key, defaultValue) {
+        if (obj[key] === undefined) {
+            obj[key] = defaultValue;
+        }
+        return obj[key];
+    }
 });
 
 // bound methods of str
@@ -287,7 +293,7 @@ String.prototype.splitlines = function(keepends) {
 }
 // String.prototype.format is https://raw.githubusercontent.com/xfix/python-format/master/lib/python-format.js
 
-String.prototype.strip = function(iterable) {
+String.prototype.strip = function() {
     return this.trim();
 }
 
