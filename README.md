@@ -80,7 +80,7 @@ size: 3
 ### builtins
 * str(x)
 * `__eq__(x, y)`
-* `__in__(x, seg)`
+* `__in__(x, collection)`
 * `__lt__(x, y)`
 * `__gt__(x, y)`
 * `__slice__(seg, start, end, step)`
