@@ -44,6 +44,7 @@ size: 3
 * clear(obj)
 * copy(obj)
 * setdefault(obj, key, default)
+* select(obj, keys)
 
 ### dir('')
 * count(sub, start, end)
@@ -98,3 +99,4 @@ size: 3
 * range(start, end, step) -> list
 * zip(lst1, lst2, lst3...)
 * `for (x of lst) {...}` 循环语法
+* $Y(fetchFunc, showFunc, ctx)  # `fetchFunc(ctx), showFunc(data, ctx)`

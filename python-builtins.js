@@ -203,6 +203,13 @@ Object.assign(dict, {
             obj[key] = defaultValue;
         }
         return obj[key];
+    },
+    select: function(obj, keys) {
+        var ret = {};
+        for (key of keys) {
+            ret[key] = obj[key];
+        }
+        return ret;
     }
 });
 
@@ -659,6 +666,16 @@ function zip() {
         ret.push(tmp);
     }
     return ret;
+}
+
+function $Y(fetchFunc, showFunc, ctx) {
+    return function() {
+        fetchFunc(ctx)(
+            function(data) {
+                showFunc(data, ctx);
+            }
+        )
+    }
 }
 
 if (typeof module !== 'undefined') {
