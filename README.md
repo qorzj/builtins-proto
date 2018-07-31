@@ -1,3 +1,5 @@
+## (2018/7/31)此项目已完全可被[Transcrypt](https://www.transcrypt.org/documentation)代替。
+
 ## builtins-proto介绍
 ### 原理
 ```
