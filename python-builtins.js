@@ -360,10 +360,10 @@ var json = {
 // bound methods of urllib
 var urllib = {
     quote: function(text) {
-        return encodeURI(text);
+        return encodeURIComponent(text);
     },
     unquote: function(text) {
-        return decodeURI(text);
+        return decodeURIComponent(text);
     },
     param: function(search) {
         search = search || location.search;
